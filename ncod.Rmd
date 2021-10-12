@@ -1,0 +1,62 @@
+---
+title: "#NationalComingOutDay 2021"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+<style>
+  div.navbar {
+    background-color: black;
+    border-bottom: none;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 0 0 red,
+                0 8px 0 0 orange,
+                0 12px 0 0 yellow,
+                0 16px 0 0 green,
+                0 20px 0 0 blue,
+                0 24px 0 0 purple;
+  }
+  #dashboard-container { margin-top: 24px; }
+</style>
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(rtweet)
+library(tidyverse)
+```
+
+```{r, eval = FALSE}
+tweets <- search_tweets(q = "#NationalComingOutDay",
+                        n = 10000,
+                        include_rts = FALSE)
+saveRDS(tweets, "data/tweets.RDS")
+```
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
