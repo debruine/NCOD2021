@@ -26,37 +26,73 @@ output:
 library(flexdashboard)
 library(rtweet)
 library(tidyverse)
+library(ggwordcloud)
+library(tidytext)
 ```
 
 ```{r, eval = FALSE}
+
 tweets <- search_tweets(q = "#NationalComingOutDay",
                         n = 10000,
                         include_rts = FALSE)
 saveRDS(tweets, "data/tweets.RDS")
+
+tweets2 <- search_tweets(q = "#NationalComingOutDay",
+                        n = 10000,
+                        max_id = min(tweets$status_id),
+                        include_rts = FALSE)
+saveRDS(tweets2, "data/tweets2.RDS")
 ```
+
+```{r}
+tweets <- readRDS("data/tweets.RDS") 
+tweets2 <- readRDS("data/tweets2.RDS")
+```
+
 
 
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Chart A
+### Word Cloud
 
 ```{r}
+omitted <- c(stop_words$word, 0:9, 
+             "im", "dont", "amp", "youre", "ive", "didnt")
 
+words <- tweets %>%
+  select(text) %>%
+  unnest_tokens(output = "word", input = "text", token = "tweets") %>%
+  count(word) %>%
+  filter(!word %in% omitted) %>%
+  slice_max(order_by = n, n = 50)
 ```
+
+```{r}
+ggplot(words, aes(label = word, colour = word, size = n)) +
+  geom_text_wordcloud_area()
+```
+
 
 Column {data-width=350}
 -----------------------------------------------------------------------
 
-### Chart B
+### Top Tweet
 
 ```{r}
-
+top_tweet <- tweets %>%
+  slice_max(order_by = favorite_count, n = 1)
 ```
 
-### Chart C
+
+`r top_tweet$text`
+
+by `r top_tweet$screen_name` (`r top_tweet$favorite_count` favorites)
+
+### Trends over time
 
 ```{r}
-
+ggplot(tweets, aes(x = created_at)) +
+  geom_density()
 ```
 
