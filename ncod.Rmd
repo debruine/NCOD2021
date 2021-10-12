@@ -11,12 +11,12 @@ output:
     background-color: black;
     border-bottom: none;
     margin-bottom: 24px;
-    box-shadow: 0 4px 0 0 red,
-                0 8px 0 0 orange,
-                0 12px 0 0 yellow,
-                0 16px 0 0 green,
-                0 20px 0 0 blue,
-                0 24px 0 0 purple;
+    box-shadow: 0 4px 0 0 rgb(238, 0, 0),
+                0 8px 0 0 rgb(255, 127, 0),
+                0 12px 0 0 rgb(255, 185, 15),
+                0 16px 0 0 rgb(0, 139, 69),
+                0 20px 0 0 rgb(0, 0, 255),
+                0 24px 0 0 rgb(125, 38, 205);
   }
   #dashboard-container { margin-top: 24px; }
 </style>
@@ -26,8 +26,16 @@ output:
 library(flexdashboard)
 library(rtweet)
 library(tidyverse)
-library(ggwordcloud)
+library(wordcloud2)
 library(tidytext)
+
+rainbow <- c("red2", 
+              "darkorange1", 
+              "darkgoldenrod1", 
+              "springgreen4", 
+              "blue", 
+              "purple3")
+
 ```
 
 ```{r, eval = FALSE}
@@ -42,39 +50,48 @@ tweets2 <- search_tweets(q = "#NationalComingOutDay",
                         max_id = min(tweets$status_id),
                         include_rts = FALSE)
 saveRDS(tweets2, "data/tweets2.RDS")
+
+tweets3 <- search_tweets(q = "#NationalComingOutDay",
+                        n = 10000,
+                        max_id = min(tweets2$status_id),
+                        include_rts = FALSE)
+saveRDS(tweets3, "data/tweets3.RDS")
 ```
 
 ```{r}
-tweets <- readRDS("data/tweets.RDS") 
-tweets2 <- readRDS("data/tweets2.RDS")
+tweets <- readRDS("data/tweets.RDS") %>%
+  bind_rows(readRDS("data/tweets2.RDS")) %>%
+  bind_rows(readRDS("data/tweets3.RDS"))
 ```
 
 
 
-Column {data-width=650}
+Column {data-width=500}
 -----------------------------------------------------------------------
 
 ### Word Cloud
 
 ```{r}
-omitted <- c(stop_words$word, 0:9, 
-             "im", "dont", "amp", "youre", "ive", "didnt")
+omitted <- c(stop_words$word, 0:9, "#nationalcomingoutday",
+             "im", "dont", "amp", "youre", "ive", "didnt", "ill")
 
 words <- tweets %>%
   select(text) %>%
   unnest_tokens(output = "word", input = "text", token = "tweets") %>%
   count(word) %>%
   filter(!word %in% omitted) %>%
-  slice_max(order_by = n, n = 50)
+  slice_max(order_by = n, n = 50, with_ties = FALSE)
 ```
 
-```{r}
-ggplot(words, aes(label = word, colour = word, size = n)) +
-  geom_text_wordcloud_area()
+```{r, fig.width = 5, fig.height = 7}
+rbow <- rep(c("red", "orange", "yellow", "green","blue", "purple"), 
+            length.out = 50)
+
+wordcloud2::wordcloud2(words)
 ```
 
 
-Column {data-width=350}
+Column {data-width=500}
 -----------------------------------------------------------------------
 
 ### Top Tweet
@@ -89,10 +106,51 @@ top_tweet <- tweets %>%
 
 by `r top_tweet$screen_name` (`r top_tweet$favorite_count` favorites)
 
+![](`r top_tweet$media_url`)
+
 ### Trends over time
 
 ```{r}
-ggplot(tweets, aes(x = created_at)) +
-  geom_density()
+
+trunc_tweet <- tweets %>%
+  filter(lubridate::date(created_at) >= "2021-10-10") %>%
+  mutate(hashtag_n = map_int(hashtags, length)) %>%
+  mutate(hashtag_n = ifelse(hashtag_n > 5, "6+", hashtag_n))
+
+min_time <- min(trunc_tweet$created_at)
+max_time <- max(trunc_tweet$created_at)
+
+ggplot(trunc_tweet) +
+  geom_rect(mapping = aes(xmin = min_time, ymin = 0, 
+                          xmax = max_time, ymax = 400),
+            fill = rainbow[[6]]) +
+  geom_rect(mapping = aes(xmin = min_time, ymin = 400, 
+                          xmax = max_time, ymax = 800),
+            fill = rainbow[[5]]) +
+  geom_rect(mapping = aes(xmin = min_time, ymin = 800, 
+                          xmax = max_time, ymax = 1200),
+            fill = rainbow[[4]]) +
+  geom_rect(mapping = aes(xmin = min_time, ymin = 1200, 
+                          xmax = max_time, ymax = 1600),
+            fill = rainbow[[3]]) +
+  geom_rect(mapping = aes(xmin = min_time, ymin = 1600, 
+                          xmax = max_time, ymax = 2000),
+            fill = rainbow[[2]]) +
+  geom_rect(mapping = aes(xmin = min_time, ymin = 2000, 
+                          xmax = max_time, ymax = 2400),
+            fill = rainbow[[1]]) +
+  geom_area(mapping = aes(x = created_at),
+            stat = "bin",
+            binwidth = 60*60, 
+            fill = "black",
+            alpha = 0.8) +
+  scale_x_datetime(name = "", 
+                   date_breaks = "6 hours",
+                   date_labels = "%a\n%H:00") +
+  scale_y_continuous(name = "Tweets per hour", 
+                     limits = c(0, 2400),
+                     breaks = seq(0, 2400, 400)) +
+  theme_minimal()
 ```
+
 
